@@ -50,9 +50,23 @@ class CMiner (
     subSeq
   }
 
-  private def firstLevelSubSequences(splits:ArrayBuffer[ArrayBuffer[Int]])
+  protected def firstLevelSubSequences(
+    input:ArrayBuffer[Int],
+    minSupport:Int,
+    splitSize:Int
+  )
   :ArrayBuffer[CMinerSubsequence] = {
-    splits.flatMap( split => {
+    val raw = input.grouped(splitSize).flatMap( split => {
+      split.zipWithIndex.map{ case (access, pos) => {
+        new CMinerSubsequence(ArrayBuffer(access), split.toArray, pos, 0)
+      }}
+    }).to[ArrayBuffer]
+
+    val freq = frequentSubsequence(raw, minSupport)
+    val new_splits = raw.filter(freq.contains(_))
+    .map(_.seq).fold(ArrayBuffer[Int]())( _ ++ _ ).grouped(splitSize).to[ArrayBuffer]
+
+    new_splits.flatMap( split => {
       split.zipWithIndex.map{ case (access, pos) => {
         new CMinerSubsequence(ArrayBuffer(access), split.toArray, pos, 0)
       }}
@@ -91,17 +105,17 @@ class CMiner (
     }
   }
 
-  protected def mineSplits(splits:ArrayBuffer[ArrayBuffer[Int]])
+  protected def mine(input:ArrayBuffer[Int], minSupport:Int, splitSize:Int)
   :ArrayBuffer[ArrayBuffer[Int]] = {
     miningNext(
-      firstLevelSubSequences(splits),
+      firstLevelSubSequences(input, minSupport, splitSize),
       minSupport,
       depth
     ).to[ArrayBuffer].map(_.seq)
   }
 
   def mine(seq:ArrayBuffer[Int]):ArrayBuffer[ArrayBuffer[Int]] = {
-    mineSplits(seq.grouped(splitSize).to[ArrayBuffer])
+    mine(seq, minSupport, splitSize)
   }
 
   assert(splitSize >= depth)
